@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+greydata/__init__.py
+greydata/cli.py
+greydata/module1.py
+greydata.egg-info/PKG-INFO
+greydata.egg-info/SOURCES.txt
+greydata.egg-info/dependency_links.txt
+greydata.egg-info/entry_points.txt
+greydata.egg-info/top_level.txt
+tests/test_module1.py

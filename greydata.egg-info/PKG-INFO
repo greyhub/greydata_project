@@ -1,0 +1,45 @@
+Metadata-Version: 2.1
+Name: greydata
+Version: 0.1.2
+Summary: Library for data analyst
+Home-page: https://greyhub.github.io/
+Author: Grey Ng
+Author-email: luongnv.grey@gmail.com
+License: MIT
+Project-URL: Documentation, https://greyhub.github.io/
+Project-URL: Source, https://github.com/username/greydata
+Project-URL: Tracker, https://github.com/username/greydata/issues
+Keywords: data processing analysis
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# Greydata
+
+Greydata is a Python library for processing and analyzing data.
+
+## Installation
+
+```bash
+pip install greydata
+```
+
+## Usage
+
+```python
+from greydata import module1
+
+print(module1.hello())
+```
+
