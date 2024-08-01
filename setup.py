@@ -3,7 +3,7 @@ import os
 
 
 def get_version(package):
-    with open(os.path.join(package, '__init__.py')) as f:
+    with open(os.path.join(package, '__init__.py'), encoding='utf-8') as f:
         for line in f:
             if line.startswith('__version__'):
                 delim = '"' if '"' in line else "'"
