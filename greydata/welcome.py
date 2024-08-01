@@ -1,4 +1,4 @@
-# greydata/module1.py
+# greydata/welcome.py
 
 def hello():
     return "Hello from greydata!"
