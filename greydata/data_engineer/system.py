@@ -63,3 +63,4 @@ def process_data(data):
     # Example data processing
     processed_data = [d.upper() for d in data]
     return processed_data
+

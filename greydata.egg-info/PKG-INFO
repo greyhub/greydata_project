@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: greydata
-Version: 0.2.0
+Version: 0.2.1
 Summary: Library for data analyst
 Home-page: https://greyhub.github.io/
 Author: Grey Ng
@@ -24,6 +24,7 @@ Classifier: Programming Language :: Python :: 3.10
 Requires-Python: >=3.6
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: cx_Oracle==8.3.0
 
 # GREYDATA
 

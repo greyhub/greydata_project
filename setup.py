@@ -36,7 +36,7 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        # Danh sách các thư viện phụ thuộc nếu có
+        'cx_Oracle==8.3.0',
     ],
     entry_points={
         'console_scripts': [
