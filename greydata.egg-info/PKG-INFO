@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: greydata
-Version: 0.1.4
+Version: 0.1.5
 Summary: Library for data analyst
 Home-page: https://greyhub.github.io/
 Author: Grey Ng
@@ -94,3 +94,11 @@ For usage instructions, refer to the documentation or examples in the docs folde
 
 ## Contact
 If you encounter issues or have questions, please contact the author via email: luongnv.grey@gmail.com.
+
+## Upgrading the Library
+To upgrade greydata to the latest version, use pip:
+
+```bash
+pip install --upgrade greydata
+```
+This command will install the latest version of the greydata library if it's already installed, or install it if itâ€™s not.

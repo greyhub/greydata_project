@@ -2,6 +2,7 @@ LICENSE
 README.md
 setup.py
 greydata/__init__.py
+greydata/arguments.py
 greydata/cli.py
 greydata/welcome.py
 greydata.egg-info/PKG-INFO
