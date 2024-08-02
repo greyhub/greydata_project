@@ -10,4 +10,10 @@ greydata.egg-info/SOURCES.txt
 greydata.egg-info/dependency_links.txt
 greydata.egg-info/entry_points.txt
 greydata.egg-info/top_level.txt
+greydata/data_analyst/__init__.py
+greydata/data_analyst/module_code.py
+greydata/data_engineer/__init__.py
+greydata/data_engineer/module_code.py
+greydata/data_scientist/__init__.py
+greydata/data_scientist/module_code.py
 tests/test_parse_arguments.py

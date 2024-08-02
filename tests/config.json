@@ -1,0 +1,35 @@
+{
+    "arguments": [
+        {
+            "name": "--group",
+            "type": "str",
+            "default": ".",
+            "help": "Group name"
+        },
+        {
+            "name": "--task_id",
+            "type": "str",
+            "default": ".",
+            "help": "Task ID"
+        },
+        {
+            "name": "--note",
+            "type": "str",
+            "help": "Additional note"
+        },
+        {
+            "name": "--auto_pass",
+            "type": "int",
+            "choices": [0, 1],
+            "default": 0,
+            "help": "Auto pass option (0 or 1)"
+        },
+        {
+            "name": "--has_wallet_user",
+            "type": "int",
+            "choices": [0, 1],
+            "default": 0,
+            "help": "Has wallet user option (0 or 1)"
+        }
+    ]
+}
