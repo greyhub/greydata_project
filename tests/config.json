@@ -34,18 +34,26 @@
     ],
     "databases": {
         "db1": {
-            "host": "your_host_1",
+            "host": "localhost",
             "port": 1521,
-            "service_name": "your_service_name_1",
-            "username": "your_username_1",
-            "password": "your_password_1"
+            "service_name": "orcl",
+            "username": "system",
+            "password": "Aa123456",
+            "tables": [
+                "TEST_CONFIG",
+                "TEST_SCRIPT"
+            ]
         },
         "db2": {
-            "host": "your_host_2",
+            "host": "localhost",
             "port": 1521,
-            "service_name": "your_service_name_2",
-            "username": "your_username_2",
-            "password": "your_password_2"
+            "service_name": "orcl",
+            "username": "system",
+            "password": "Aa123456",
+            "tables": [
+                "TEST",
+                "TEST_CONFIG"
+            ]
         }
     }
 }

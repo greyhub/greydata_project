@@ -1,10 +1,12 @@
 import cx_Oracle
 import json
 import os
+import pandas as pd
 
-def load_db_config(config_file='config.json'):
+
+def list_db_config(config_file='config.json'):
     """
-    Load database configuration from a JSON file.
+    List database configuration from a JSON file.
 
     Args:
         config_file (str): Path to the configuration file (default: 'config.json').
@@ -15,28 +17,38 @@ def load_db_config(config_file='config.json'):
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"Configuration file {config_file} not found.")
 
-    with open(config_file, 'r') as file:
-        config = json.load(file)
+    with open(config_file, 'r') as f:
+        configs = json.load(f).get("databases")
+
+    return configs
+
+
+def load_db_config(config_name, config_file='config.json'):
+    """
+    Load database configuration from a JSON file.
+
+    Args:
+        config_name (str): Config name of db.
+        config_file (str): Path to the configuration file (default: 'config.json').
+
+    Returns:
+        dict: Database configuration details.
+    """
+    configs = list_db_config(config_file)
     
-    return config.get('databases', {})
+    return configs.get(config_name)
 
 
-def connect_to_db(db_name, config):
+def connect_to_db(db_config):
     """
     Connect to the Oracle database using the specified configuration.
 
     Args:
-        db_name (str): Name of the database configuration to use.
-        config (dict): Database configurations.
+        db_config (dict): Database configurations.
 
     Returns:
         cx_Oracle.Connection: Oracle database connection object.
     """
-    db_config = config.get(db_name)
-
-    if not db_config:
-        raise ValueError(f"Database configuration '{db_name}' not found in config.")
-
     try:
         dsn = cx_Oracle.makedsn(
             db_config['host'],
@@ -56,20 +68,18 @@ def connect_to_db(db_name, config):
         raise
 
 
-def create_record(db_name, table_name, data):
+def insert(connection, table_name, data):
     """
     Create a new record in the specified table.
 
     Args:
-        db_name (str): Name of the database configuration to use.
+        connection (str): DB connection.
         table_name (str): Name of the table to insert the data into.
         data (dict): Data to insert as a new record.
 
     Returns:
         bool: True if the operation was successful, False otherwise.
     """
-    config = load_db_config()
-    connection = connect_to_db(db_name, config)
     cursor = connection.cursor()
 
     try:
@@ -85,23 +95,20 @@ def create_record(db_name, table_name, data):
         return False
     finally:
         cursor.close()
-        connection.close()
 
 
-def read_records(db_name, table_name, condition=None):
+def read(connection, table_name, condition=None):
     """
     Read records from the specified table with an optional condition.
 
     Args:
-        db_name (str): Name of the database configuration to use.
+        connection (str): DB connection.
         table_name (str): Name of the table to read from.
         condition (str, optional): SQL condition to filter records.
 
     Returns:
         list: List of tuples representing records.
     """
-    config = load_db_config()
-    connection = connect_to_db(db_name, config)
     cursor = connection.cursor()
 
     try:
@@ -109,22 +116,24 @@ def read_records(db_name, table_name, condition=None):
         if condition:
             query += f" WHERE {condition}"
 
-        cursor.execute(query)
-        return cursor.fetchall()
+        # cursor.execute(query)
+        # rows = cursor.fetchall()
+        # columns = [column[0] for column in cursor.description]
+        df = pd.read_sql(query, con=connection)
+        return df
     except cx_Oracle.Error as error:
         print("Error reading records:", error)
-        return []
+        return None
     finally:
         cursor.close()
-        connection.close()
 
 
-def update_record(db_name, table_name, data, condition):
+def update(connection, table_name, data, condition):
     """
     Update an existing record in the specified table.
 
     Args:
-        db_name (str): Name of the database configuration to use.
+        connection (str): DB connection.
         table_name (str): Name of the table to update.
         data (dict): Data to update in the record.
         condition (str): SQL condition to specify which records to update.
@@ -132,8 +141,6 @@ def update_record(db_name, table_name, data, condition):
     Returns:
         bool: True if the operation was successful, False otherwise.
     """
-    config = load_db_config()
-    connection = connect_to_db(db_name, config)
     cursor = connection.cursor()
 
     try:
@@ -148,23 +155,20 @@ def update_record(db_name, table_name, data, condition):
         return False
     finally:
         cursor.close()
-        connection.close()
 
 
-def delete_record(db_name, table_name, condition):
+def delete(connection, table_name, condition):
     """
     Delete records from the specified table based on a condition.
 
     Args:
-        db_name (str): Name of the database configuration to use.
+        connection (str): DB connection.
         table_name (str): Name of the table to delete records from.
         condition (str): SQL condition to specify which records to delete.
 
     Returns:
         bool: True if the operation was successful, False otherwise.
     """
-    config = load_db_config()
-    connection = connect_to_db(db_name, config)
     cursor = connection.cursor()
 
     try:
@@ -178,4 +182,3 @@ def delete_record(db_name, table_name, condition):
         return False
     finally:
         cursor.close()
-        connection.close()
