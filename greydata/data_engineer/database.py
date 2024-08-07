@@ -1,184 +1,162 @@
 import cx_Oracle
 import json
-import os
 import pandas as pd
-
-
-def list_db_config(config_file='config.json'):
-    """
-    List database configuration from a JSON file.
-
-    Args:
-        config_file (str): Path to the configuration file (default: 'config.json').
-
-    Returns:
-        dict: Database configuration details.
-    """
-    if not os.path.exists(config_file):
-        raise FileNotFoundError(f"Configuration file {config_file} not found.")
-
-    with open(config_file, 'r') as f:
-        configs = json.load(f).get("databases")
-
-    return configs
 
 
 def load_db_config(config_name, config_file='config.json'):
     """
-    Load database configuration from a JSON file.
+    Load the database configuration from a JSON file.
 
     Args:
-        config_name (str): Config name of db.
-        config_file (str): Path to the configuration file (default: 'config.json').
+        config_name (str): Name of the database configuration.
+        config_file (str): Path to the configuration JSON file.
 
     Returns:
-        dict: Database configuration details.
+        dict: The database configuration.
     """
-    configs = list_db_config(config_file)
+    with open(config_file, 'r') as file:
+        config = json.load(file)
+
+    if config_name == "":
+        return config['databases']
+
+    return config['databases'].get(config_name)
+
+def connect_to_db(config):
+    """
+    Connect to the Oracle database using the configuration provided.
+
+    Args:
+        config (dict): Database configuration dictionary.
+
+    Returns:
+        cx_Oracle.Connection: Oracle database connection.
+    """
+    dsn = cx_Oracle.makedsn(
+        config['host'],
+        config['port'],
+        service_name=config['service_name']
+    )
+    connection = cx_Oracle.connect(
+        config['username'],
+        config['password'],
+        dsn
+    )
+    return connection
+
+def insert(db_name, table_name, data, config_file='config.json'):
+    """
+    Insert a record into the specified table.
+
+    Args:
+        db_name (str): Database name as per configuration.
+        table_name (str): Table name where data will be inserted.
+        data (dict): Data to insert, as a dictionary of column-value pairs.
+        config_file (str): Path to the configuration JSON file.
+    """
+    db_config = load_db_config(db_name, config_file)
+    connection = connect_to_db(db_config)
+    cursor = connection.cursor()
     
-    return configs.get(config_name)
-
-
-def connect_to_db(db_config):
-    """
-    Connect to the Oracle database using the specified configuration.
-
-    Args:
-        db_config (dict): Database configurations.
-
-    Returns:
-        cx_Oracle.Connection: Oracle database connection object.
-    """
-    try:
-        dsn = cx_Oracle.makedsn(
-            db_config['host'],
-            db_config['port'],
-            service_name=db_config['service_name']
-        )
-        
-        connection = cx_Oracle.connect(
-            user=db_config['username'],
-            password=db_config['password'],
-            dsn=dsn,
-            encoding=db_config.get('encoding', 'UTF-8')
-        )
-        return connection
-    except cx_Oracle.Error as error:
-        print("Error connecting to Oracle database:", error)
-        raise
-
-
-def insert(connection, table_name, data):
-    """
-    Create a new record in the specified table.
-
-    Args:
-        connection (str): DB connection.
-        table_name (str): Name of the table to insert the data into.
-        data (dict): Data to insert as a new record.
-
-    Returns:
-        bool: True if the operation was successful, False otherwise.
-    """
-    cursor = connection.cursor()
+    # Cấu trúc lại tên biến bind theo chuẩn của Oracle
+    valid_data = {f'param_{k}': v for k, v in data.items() if len(k) <= 30 and k.isidentifier()}
+    
+    columns = ', '.join(f'"{col}"' for col in data.keys())
+    values = ', '.join(f':{col}' for col in valid_data.keys())
+    sql = f'INSERT INTO "{table_name}" ({columns}) VALUES ({values})'
 
     try:
-        columns = ', '.join(data.keys())
-        values = ', '.join([':' + key for key in data.keys()])
-        insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({values})"
-
-        cursor.execute(insert_query, data)
+        cursor.execute(sql, valid_data)
         connection.commit()
-        return True
-    except cx_Oracle.Error as error:
-        print("Error inserting record:", error)
-        return False
+    except Exception as e:
+        connection.rollback()
+        raise e
     finally:
         cursor.close()
+        connection.close()
 
-
-def read(connection, table_name, condition=None):
+def read(db_name, table_name, condition=None, config_file='config.json'):
     """
-    Read records from the specified table with an optional condition.
+    Read records from the specified table.
 
     Args:
-        connection (str): DB connection.
-        table_name (str): Name of the table to read from.
-        condition (str, optional): SQL condition to filter records.
+        db_name (str): Database name as per configuration.
+        table_name (str): Table name from which data will be read.
+        condition (str, optional): SQL condition for filtering records.
+        config_file (str): Path to the configuration JSON file.
 
     Returns:
-        list: List of tuples representing records.
+        pd.DataFrame: DataFrame containing the fetched records.
     """
+    config = load_db_config(db_name, config_file)
+    connection = connect_to_db(config)
     cursor = connection.cursor()
 
-    try:
-        query = f"SELECT * FROM {table_name}"
-        if condition:
-            query += f" WHERE {condition}"
+    sql = f'SELECT * FROM {table_name}'
+    if condition:
+        sql += f' WHERE {condition}'
 
-        # cursor.execute(query)
-        # rows = cursor.fetchall()
-        # columns = [column[0] for column in cursor.description]
-        df = pd.read_sql(query, con=connection)
-        return df
-    except cx_Oracle.Error as error:
-        print("Error reading records:", error)
-        return None
-    finally:
-        cursor.close()
+    cursor.execute(sql)
+    columns = [column[0] for column in cursor.description]
+    rows = cursor.fetchall()
 
+    cursor.close()
+    connection.close()
 
-def update(connection, table_name, data, condition):
+    return pd.DataFrame(rows, columns=columns)
+
+def update(db_name, table_name, data, condition, config_file='config.json'):
     """
-    Update an existing record in the specified table.
+    Update records in the specified table.
 
     Args:
-        connection (str): DB connection.
-        table_name (str): Name of the table to update.
-        data (dict): Data to update in the record.
+        db_name (str): Database name as per configuration.
+        table_name (str): Table name where records will be updated.
+        data (dict): Data to update, as a dictionary of column-value pairs.
         condition (str): SQL condition to specify which records to update.
-
-    Returns:
-        bool: True if the operation was successful, False otherwise.
+        config_file (str): Path to the configuration JSON file.
     """
+    config = load_db_config(db_name, config_file)
+    connection = connect_to_db(config)
     cursor = connection.cursor()
 
+    # Ensure column names are valid
+    valid_data = {f'param_{k}': v for k, v in data.items() if len(k) <= 30 and k.isidentifier()}
+    
+    # Properly quote column names to handle special characters or reserved words
+    set_clause = ', '.join(f'"{col}" = :param_{col}' for col in data.keys())
+    
+    # Build SQL query with quoted table name and columns
+    sql = f'UPDATE "{table_name}" SET {set_clause} WHERE {condition}'
+    
     try:
-        set_clause = ', '.join([f"{key} = :{key}" for key in data.keys()])
-        update_query = f"UPDATE {table_name} SET {set_clause} WHERE {condition}"
-
-        cursor.execute(update_query, data)
+        cursor.execute(sql, valid_data)
         connection.commit()
-        return True
-    except cx_Oracle.Error as error:
-        print("Error updating record:", error)
-        return False
+    except Exception as e:
+        connection.rollback()
+        raise e
     finally:
         cursor.close()
+        connection.close()
 
 
-def delete(connection, table_name, condition):
+def delete(db_name, table_name, condition, config_file='config.json'):
     """
-    Delete records from the specified table based on a condition.
+    Delete records from the specified table.
 
     Args:
-        connection (str): DB connection.
-        table_name (str): Name of the table to delete records from.
+        db_name (str): Database name as per configuration.
+        table_name (str): Table name from which records will be deleted.
         condition (str): SQL condition to specify which records to delete.
-
-    Returns:
-        bool: True if the operation was successful, False otherwise.
+        config_file (str): Path to the configuration JSON file.
     """
+    config = load_db_config(db_name, config_file)
+    connection = connect_to_db(config)
     cursor = connection.cursor()
 
-    try:
-        delete_query = f"DELETE FROM {table_name} WHERE {condition}"
-
-        cursor.execute(delete_query)
-        connection.commit()
-        return True
-    except cx_Oracle.Error as error:
-        print("Error deleting record:", error)
-        return False
-    finally:
-        cursor.close()
+    sql = f'DELETE FROM {table_name} WHERE {condition}'
+    cursor.execute(sql)
+    
+    connection.commit()
+    cursor.close()
+    connection.close()

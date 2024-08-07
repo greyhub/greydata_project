@@ -1,151 +1,117 @@
 import streamlit as st
-from .database import *
-import time
-import warnings
+import pandas as pd
+from greydata.data_engineer.database import load_db_config, connect_to_db, read, insert, update, delete
 
-warnings.filterwarnings('ignore')
+def run_crud_ui():
+    """
+    Run the Streamlit UI for selecting and viewing database tables.
+    """
+    st.title("Database Table Viewer and Editor")
 
+    # Load database configuration
+    config = load_db_config("", "config.json")
+    databases = list(config.keys())
 
-def create_crud_ui():
-    if "login" not in st.session_state:
-        st.session_state.login = False
-    
-    if "connection_config" not in st.session_state:
-        st.session_state.connection_config = None
-    
-    if "table_name" not in st.session_state:
-        st.session_state.table_name = None
+    # Sidebar for database and table selection
+    st.sidebar.header("Database Selection")
+    selected_db = st.sidebar.selectbox("Select a database", databases)
 
-    if not st.session_state.login:
-        login_db()
-    else:
-        # if st.button('QUERY'):
-        #     connection = connect_to_db(st.session_state.connection_config)
-        #     query = f"SELECT * FROM {st.session_state.table_name}"
-        #     df = pd.read_sql(query, con=connection)
-        #     st.dataframe(df)
-        run_crud_ui(st.session_state.connection_config, st.session_state.table_name)
+    # Initialize session state variables
+    if 'connected' not in st.session_state:
+        st.session_state.connected = False
+    if 'selected_table' not in st.session_state:
+        st.session_state.selected_table = None
+    if 'connection' not in st.session_state:
+        st.session_state.connection = None
+    if 'df' not in st.session_state:
+        st.session_state.df = None
 
+    if selected_db:
+        tables = config[selected_db]["tables"]
+        selected_table = st.sidebar.selectbox("Select a table", tables, key='table_select')
 
-def login_db(config_file="config.json"):
-    
-    st.title("Login to Oracle Database")
+        # Connect button
+        if st.sidebar.button("Connect"):
+            # Connect to the selected database
+            db_config = load_db_config(selected_db, "config.json")
+            st.session_state.connection = connect_to_db(db_config)
 
-    # Load database configurations
-    db_configs = list_db_config(config_file)
-    
-    # Select database configuration
-    db_name = st.selectbox("Select Database", list(db_configs.keys()))
+            # Show connection success message
+            st.success(f"Connected to database: {selected_db}")
+            st.session_state.connected = True
+            st.session_state.selected_table = selected_table
 
-    # Display available tables for the selected database
-    tables = db_configs[db_name].get("tables", [])
+            # Load and display table data
+            try:
+                st.session_state.df = read(selected_db, selected_table, config_file="config.json")
+                # st.dataframe(st.session_state.df)
+            except Exception as e:
+                st.error(f"Failed to load data: {str(e)}")
 
-    if not tables:
-        st.error(f"No tables available for database {db_name}")
-        return
+        if st.sidebar.button("Refresh"):
+            st.rerun()
 
-    # Select table
-    st.header("Table Selection")
-    table_name = st.selectbox("Select Table", tables)
+    # Check if connected to a database
+    if st.session_state.connected:
+        st.info(f"Currently viewing table: {st.session_state.selected_table}")
 
-    config = db_configs[db_name]
+        # Display the data
+        st.dataframe(st.session_state.df)
 
-    # Database login form
-    st.subheader("Database Login")
-    host = st.text_input("Host", config['host'])
-    port = st.text_input("Port", config['port'])
-    service_name = st.text_input("Service Name", config['service_name'])
-    username = st.text_input("Username", config['username'])
-    password = st.text_input("Password", config['password'], type="password")
-    # conn = None
+        # CRUD Operations
+        st.header("CRUD Operations")
 
-    if st.button("Connect"):
-        try:
-            # Load the database configuration
-            config = {
-                "host": host,
-                "port": port,
-                "service_name": service_name,
-                "username": username,
-                "password": password
-            }
-
-            # Attempt to connect to the selected database
-            st.session_state.login = True
-            st.session_state.connection_config = config
-            st.session_state.table_name = table_name
-
-            with st.spinner('Wait for it...'):
-                time.sleep(1)
-            
-            st.rerun(scope="app")
-        except Exception as e:
-            st.error(f"Failed to connect to {db_name}: {str(e)}")
-            # return
-
-    # If connected, show CRUD operations
-    # return conn, table_name
-
-def run_crud_ui(connection_config, table_name):
-    """Run the Streamlit CRUD application."""
-    st.title("Oracle Database CRUD Application")
-
-    st.write(f"Welcome {st.session_state.connection_config['username']}")
-    st.write(f"Table name: {st.session_state.table_name}")
-
-    connection = connect_to_db(connection_config)
-
-    # Sidebar to choose the action
-    action = st.sidebar.selectbox("Choose Action", ["Read", "Create", "Update", "Delete"])
-
-    if action == "Create":
-        st.subheader("Add New Record")
-        columns, values = [], []
-
-        # Get column names from the database to display input fields
-        st.write(connection)
-        st.write(table_name)
-
-        df = read(connection, table_name)
-        column_names = df.columns
-        with st.form("create_form"):
-            for col in column_names:
-                value = st.text_input(f"Enter {col}", "")
-                columns.append(col)
-                values.append(value)
-            submitted = st.form_submit_button("Add")
-
+        # Insert new record
+        st.subheader("Insert Record")
+        with st.form("insert_form"):
+            new_record = {}
+            for column in st.session_state.df.columns:
+                new_record[column] = st.text_input(f"Enter {column}", key=f"insert_{column}")
+            submitted = st.form_submit_button("Insert")
             if submitted:
-                data = dict(zip(columns, values))
-                insert(connection, table_name, data)
-                st.success("Record added successfully!")
+                try:
+                    insert(selected_db, st.session_state.selected_table, new_record)
+                    st.success("Record inserted successfully.")
+                    # Refresh data to show changes
+                    st.session_state.df = read(selected_db, st.session_state.selected_table, config_file="config.json")
+                    st.dataframe(st.session_state.df)
+                except Exception as e:
+                    st.error(f"Failed to insert record: {str(e)}")
 
-    elif action == "Read":
-        st.subheader("Read Records")
-        df = read(connection, table_name)
-        st.dataframe(df)
-
-    elif action == "Update":
+        # Update existing record
         st.subheader("Update Record")
-        condition = st.text_input("Enter condition to update the record", "")
-        if condition:
-            df = read(connection, table_name)
-            column_names = df.columns
-            with st.form("update_form"):
-                updated_data = {col: st.text_input(f"Update {col}", "") for col in column_names}
-                submitted = st.form_submit_button("Update")
+        with st.form("update_form"):
+            update_condition = st.text_input("Enter condition to select record(s) for update (e.g., 'id=1')", "", key='update_condition')
+            updated_values = {}
+            for column in st.session_state.df.columns:
+                updated_values[column] = st.text_input(f"Update {column}", key=f"update_{column}")
+            update_submitted = st.form_submit_button("Update")
+            if update_submitted:
+                try:
+                    update(selected_db, st.session_state.selected_table, updated_values, update_condition)
+                    st.success("Record(s) updated successfully.")
+                    # Refresh data to show changes
+                    st.session_state.df = read(selected_db, st.session_state.selected_table, config_file="config.json")
+                    st.dataframe(st.session_state.df)
+                except Exception as e:
+                    st.error(f"Failed to update record(s): {str(e)}")
 
-                if submitted:
-                    update(connection, table_name, updated_data, condition)
-                    st.success("Record updated successfully!")
-
-    elif action == "Delete":
+        # Delete record
         st.subheader("Delete Record")
-        condition = st.text_input("Enter condition to delete the record", "")
-        if condition:
-            if st.button("Delete"):
-                delete(connection, table_name, condition)
-                st.success("Record deleted successfully!")
+        with st.form("delete_form"):
+            delete_condition = st.text_input("Enter condition to select record(s) for deletion (e.g., 'id=1')", "", key='delete_condition')
+            delete_submitted = st.form_submit_button("Delete")
+            if delete_submitted:
+                try:
+                    delete(selected_db, st.session_state.selected_table, delete_condition)
+                    st.success("Record(s) deleted successfully.")
+                    # Refresh data to show changes
+                    st.session_state.df = read(selected_db, st.session_state.selected_table, config_file="config.json")
+                    st.dataframe(st.session_state.df)
+                except Exception as e:
+                    st.error(f"Failed to delete record(s): {str(e)}")
+    else:
+        st.warning("Please select a database and table, then click Connect.")
 
-    # Close the connection
-    connection.close()
+if __name__ == "__main__":
+    run_crud_ui()

@@ -19,6 +19,6 @@ greydata/data_engineer/database.py
 greydata/data_engineer/system.py
 greydata/data_scientist/__init__.py
 greydata/data_scientist/module_code.py
-tests/test.py
+tests/test_crud.py
 tests/test_parse_arguments.py
 tests/test_zip_and_arg.py
